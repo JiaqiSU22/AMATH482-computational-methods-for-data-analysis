@@ -1,0 +1,57 @@
+% Clean workspace
+clear all; close all; clc
+% Import and convert audio pieces to vectors (Floyd)
+[y2, Fs2] = audioread('Floyd.m4a');
+tr_floyd = length(y2)/Fs2; 
+y2s = y2(1:length(y2)-1);
+% Set up time and Fourier domain (Floyd)
+L2 = tr_floyd; n2 = length(y2s);
+t2s = linspace(0,L2,n2+1); ts = t2s(1:n2);
+k2 = (2*pi/L2)*[0:n2/2-1 -n2/2:-1]; ks2 = fftshift(k2);
+% Apply Gabor filter on Floyd using Gaussian function
+tau2 = 0:2:L2; a2 = 1000;
+ygt2_spec = zeros(n2,length(tau2));
+yg2 = zeros(n2,length(tau2));
+for j = 1:length(tau2)
+   g = exp(-a2*(ts-tau2(j)).^2); % Window function
+   yg2(:,j) = g.*y2s';
+   ygt2 = fft(yg2(:,j));
+   ygt2_spec(:,j) = fftshift(abs(ygt2));
+end
+figure(1)
+pcolor(tau2,ks2/(2*pi),ygt2_spec/(2*pi))
+shading interp
+set(gca,'ylim',[0 800],'Fontsize',16)
+colormap(hot)
+xlabel('time (s)'), ylabel('frequency (Hz)') title('Floyd Music Score')
+%% Isolate bass in Floyd
+ygtf2_spec = zeros(n2,length(tau2));
+ksfilter = abs(ks2/(2*pi)-260);
+[kmin,kind] = min(ksfilter);
+arrayfilter = ones(n2,1);
+arrayfilter(kind+1:end,1) = 0;
+for j = 1:length(tau2)
+    bassrange = arrayfilter.*ygt2_spec(:,j);
+    [m,ind] = max(bassrange);
+    k0 = abs(ks2(ind));
+    taug2 = 0.001;
+    filter = exp(-taug2*(ks2-k0).^2);
+    ygtf2_spec(:,j) = filter'.*bassrange;
+end
+% Plot the fig
+figure(2)
+yyaxis left
+pcolor(tau2,ks2/(2*pi),ygtf2_spec/(2*pi))
+shading interp
+set(gca,'ylim',[0 500],'Fontsize',16)
+colormap(hot)
+xlabel('time (s)'), ylabel('frequency (Hz)') title('Notes of Bass in Comfortably Numb')
+
+yyaxis right
+pcolor(tau2,ks2/(2*pi),ygtf2_spec/(2*pi))
+shading interp
+set(gca,'ylim',[0 500],'Fontsize',16)
+colormap(hot)
+ylabel('Notes of bass')
+set(gca,'ytick',[78,104,131,185,250])
+set(gca,'Yticklabel',{'D#','C','G#','F#','B'})
